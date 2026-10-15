@@ -288,6 +288,13 @@ unwrap tool first.
 - Set **Texture Resolution** to 512 or lower
 - Set **Delight** to Off (saves ~1.5 GB VRAM)
 
+### "No module named rasterizer_distribution"
+Update to the corrected installer. Modly launches `setup.py` through `runpy`,
+so setup explicitly adds its own directory to Python's import path. Ensure
+`rasterizer_distribution.py` is present beside `setup.py` in the downloaded
+extension. This error occurs before dependency installation and is unrelated
+to the GPU or CUDA driver.
+
 ### "CUDA Toolkit was not found" / rasterizer build failure
 Normal Windows installs use the bundled rasterizer wheels. Reinstall from a complete copy of this repo, including `rasterizer_wheels/`. If the bundled files are missing, a matching published release is required; users should not be asked to install compilers. Explicit developer source builds still require CUDA Toolkit, C++ Build Tools and the Windows SDK.
 

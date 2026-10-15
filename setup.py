@@ -32,6 +32,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# Modly executes this file through runpy, which does not add its directory
+# to sys.path. Resolve sibling installer modules independently of the cwd.
+_EXTENSION_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_EXTENSION_DIR))
 from rasterizer_distribution import resolve_wheel, install_wheel
 
 VERSION = "2.3.1"
