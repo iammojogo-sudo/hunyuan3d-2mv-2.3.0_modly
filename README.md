@@ -272,6 +272,16 @@ unwrap tool first.
 
 ## Troubleshooting
 
+### Missing/unexpected DINOv2 checkpoint keys during mesh generation
+
+Hunyuan's checkpoint uses the Transformers 4 DINOv2 parameter layout. Transformers
+5 changes that layout, so a fresh install with newer libraries can fail even
+with unchanged, valid model weights. This release pins Transformers 4.48.3,
+Tokenizers 0.21.4, Diffusers 0.32.2, and Hugging Face Hub 0.36.0 together.
+Reinstall the updated extension and restart its runtime to apply these versions.
+Model weights do not need downloading again. Do not bypass strict checkpoint
+loading to suppress this error: missing encoder weights would break generation.
+
 ### "No input image (tiled_path) found"
 - Make sure you wired an image into the node
 - If using **Image Folder** mode, verify the folder path is correct

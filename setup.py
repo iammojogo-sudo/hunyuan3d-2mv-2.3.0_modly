@@ -46,8 +46,8 @@ HY3DGEN_SOURCE = "https://github.com/Tencent/Hunyuan3D-2/archive/f8db63096c8282c
 RUNTIME_DEPS = [
     "Pillow",
     "numpy",
-    "diffusers",
-    "transformers>=4.48.0",
+    "diffusers==0.32.2",
+    "transformers==4.48.3",
     "accelerate",
     "einops",
     "safetensors",
@@ -61,7 +61,8 @@ RUNTIME_DEPS = [
     "xatlas",
     "pygltflib",
     "pymeshlab",
-    "huggingface_hub",
+    "huggingface_hub==0.36.0",
+    "tokenizers==0.21.4",
     "pyrender",
     "scipy",  # texture bridge inpaint (distance_transform_edt)
     "scikit-image",  # texture bridge deform (ThinPlateSplineTransform)
