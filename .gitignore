@@ -4,10 +4,24 @@ venv/
 # Python
 __pycache__/
 *.py[cod]
-!custom_rasterizer/*.pyd
+
+# Loose native build/runtime artifacts (release wheels remain tracked)
+*.pyd
+*.so
+*.obj
+*.o
+*.exp
+*.lib
+*.pdb
+
+# Developer caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.egg-info/
 build/
 dist/
+release-dist/
 
 # Dev backups
 *.bak
