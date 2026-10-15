@@ -501,6 +501,63 @@ def _bridge_first_load(args):
             "message": f"[bridge] first-load bootstrap skipped: {e}"}), flush=True)
 
 
+def _load_shape_pipeline_low_memory(model_path, subfolder):
+    """Attach checkpoint tensors to empty models instead of allocating FP32 copies."""
+    import yaml
+    from accelerate import init_empty_weights
+    from safetensors import safe_open
+    from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
+    from hy3dgen.shapegen.pipelines import instantiate_from_config
+
+    folder = Path(model_path) / subfolder
+    checkpoint = folder / "model.fp16.safetensors"
+    config_path = folder / "config.yaml"
+    if not checkpoint.is_file() or not config_path.is_file():
+        raise FileNotFoundError(f"Missing local shape checkpoint/config in {folder}")
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    components = {}
+    with safe_open(str(checkpoint), framework="pt", device="cpu") as weights:
+        keys = list(weights.keys())
+        for name in ("model", "vae", "conditioner"):
+            print(json.dumps({"type": "log", "message":
+                f"Loading {name} directly from checkpoint (low-memory CPU load)"}), flush=True)
+            with init_empty_weights():
+                component = instantiate_from_config(config[name])
+            prefix = name + "."
+            state = {key[len(prefix):]: weights.get_tensor(key)
+                     for key in keys if key.startswith(prefix)}
+            if not state:
+                raise RuntimeError(f"Checkpoint has no {name} weights")
+            component.load_state_dict(state, strict=(name != "vae"), assign=True)
+            if name == "vae":
+                # Tencent's generation checkpoint omits the training-only VAE
+                # encoder/pre_kl. Image-to-mesh uses decode, never encode.
+                # Do not allocate random weights for these absent branches.
+                class UnavailableTrainingBranch(torch.nn.Module):
+                    def forward(self, *args, **kwargs):
+                        raise RuntimeError("This generation checkpoint has no VAE training encoder")
+                for branch in ("encoder", "pre_kl"):
+                    if not any(key.startswith(branch + ".") for key in state):
+                        setattr(component, branch, UnavailableTrainingBranch())
+            unresolved = [key for key, value in component.state_dict().items() if value.is_meta]
+            if unresolved:
+                raise RuntimeError(f"Checkpoint is missing {name} tensors: {unresolved[:8]}")
+            # Preserve the original pipeline's FP16 inference dtype, without an
+            # intermediate full-size FP32 model and copy of its parameters.
+            component.to(dtype=torch.float16)
+            components[name] = component
+            del state
+    return Hunyuan3DDiTFlowMatchingPipeline(
+        **components,
+        scheduler=instantiate_from_config(config["scheduler"]),
+        image_processor=instantiate_from_config(config["image_processor"]),
+        device="cpu", dtype=torch.float16,
+        from_pretrained_kwargs=dict(model_path=str(model_path), subfolder=subfolder,
+                                    use_safetensors=True, variant="fp16",
+                                    dtype=torch.float16, device="cpu"),
+    )
+
+
 def generate_mesh(args):
     """Shape model only: load views, run shape pipeline, save untextured mesh."""
     import torch
@@ -643,10 +700,7 @@ def generate_mesh(args):
     report(13, "Resolved model cache")
     torch.cuda.empty_cache()
     report(15, "Loading pipeline weights…")
-    shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
-        real_path, subfolder=real_sub, variant="fp16", device="cpu",
-        local_files_only=True,
-    )
+    shape_pipeline = _load_shape_pipeline_low_memory(real_path, real_sub)
     report(18, "Moving VAE to GPU…")
     shape_pipeline.vae.to("cuda")
     torch.cuda.empty_cache()

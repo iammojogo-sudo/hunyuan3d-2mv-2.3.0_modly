@@ -272,6 +272,16 @@ unwrap tool first.
 
 ## Troubleshooting
 
+### Shape loading stops without a Python traceback
+
+The shape loader attaches the FP16 checkpoint tensors to empty model structures
+instead of first allocating full-size FP32 model copies. This reduces peak
+system memory during loading. A previous loader could exhaust Windows virtual
+memory on a 16 GB machine before reaching GPU generation. Keep Windows virtual
+memory enabled and close memory-heavy apps if memory is still insufficient.
+Generation errors include the child process exit code to help identify native
+crashes. Model files do not need modification or another download.
+
 ### Missing/unexpected DINOv2 checkpoint keys during mesh generation
 
 Hunyuan's checkpoint uses the Transformers 4 DINOv2 parameter layout. Transformers

@@ -739,7 +739,12 @@ class Hunyuan3DmvGenerator(BaseGenerator):
 
         tail = "\n".join(captured)[-16000:]
         if proc.returncode != 0:
-            raise RuntimeError(f"Mesh generation failed:\n{tail}")
+            raise RuntimeError(
+                f"Mesh generation failed (exit {proc.returncode}, "
+                f"0x{proc.returncode & 0xFFFFFFFF:08X}). "
+                "If no Python traceback follows, check Windows application/resource logs "
+                "for a native crash or exhausted system memory.\n" + tail
+            )
 
         if not output_path.exists():
             raise RuntimeError(f"Output mesh not created:\n{tail}")
